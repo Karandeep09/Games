@@ -276,31 +276,30 @@ function step() {
 }
 
 function canMoveInto(material) {
-  return material === EMPTY || material === WATER || material === SMOKE || material === STEAM;
+  return material === EMPTY || material === SMOKE || material === STEAM;
 }
 
-function tryMove(x, y, nx, ny) {
+function tryMove(x, y, nx, ny, displaceWater = false) {
   if (!inBounds(nx, ny)) return false;
   const from = index(x, y);
   const to = index(nx, ny);
-  if (!canMoveInto(cells[to])) return false;
+  if (!canMoveInto(cells[to]) && !(displaceWater && cells[to] === WATER)) return false;
   swap(from, to);
   return true;
 }
 
 function updateSand(x, y) {
   const moves = gravityMoves(false);
-  moves.some(([dx, dy]) => tryMove(x, y, x + dx, y + dy));
+  moves.some(([dx, dy]) => tryMove(x, y, x + dx, y + dy, true));
 }
 
 function updateWater(x, y) {
-  if (touching(x, y, FIRE)) {
-    setCell(x, y, STEAM);
+  if (extinguishNearbyFire(x, y)) {
+    setCell(x, y, Math.random() < 0.72 ? SMOKE : STEAM);
     return;
   }
 
-  const moves = gravityMoves(true);
-  moves.some(([dx, dy]) => tryMove(x, y, x + dx, y + dy));
+  flowWithPressure(x, y, false, 9);
 }
 
 function updatePowder(x, y) {
@@ -315,8 +314,8 @@ function updateFire(x, y) {
   const i = index(x, y);
   life[i] -= 1;
   igniteNeighbors(x, y);
-  if (get(x, y + 1) === WATER || life[i] === 0) {
-    setCell(x, y, Math.random() < 0.45 ? SMOKE : EMPTY);
+  if (touching(x, y, WATER) || life[i] === 0) {
+    setCell(x, y, Math.random() < 0.78 ? SMOKE : EMPTY);
     return;
   }
   const moves = gravityMoves(true, true);
@@ -341,17 +340,11 @@ function updateSteam(x, y) {
   life[i] -= 1;
 
   if (life[i] === 0 || x <= 1 || x >= width - 2 || y <= 1 || y >= height - 2) {
-    setCell(x, y, Math.random() < 0.18 ? WATER : EMPTY);
+    setCell(x, y, EMPTY);
     return;
   }
 
-  if (Math.random() < 0.04 && !touching(x, y, FIRE)) {
-    setCell(x, y, WATER);
-    return;
-  }
-
-  const moves = gravityMoves(true, true);
-  moves.some(([dx, dy]) => tryMove(x, y, x + dx, y + dy));
+  flowWithPressure(x, y, true, 7);
 }
 
 function gravityMoves(spread = false, reverse = false) {
@@ -378,6 +371,51 @@ function gravityMoves(spread = false, reverse = false) {
   return moves.filter(([moveX, moveY]) => moveX || moveY);
 }
 
+function gravityBasis(reverse = false) {
+  const forceX = reverse ? -gravityX : gravityX;
+  const forceY = reverse ? -gravityY : gravityY;
+  const primary = [
+    Math.abs(forceX) > 0.18 ? Math.sign(forceX) : 0,
+    Math.abs(forceY) > 0.18 ? Math.sign(forceY) : 0,
+  ];
+  const dominantX = Math.abs(forceX) > Math.abs(forceY);
+  if (!primary[0] && !primary[1]) primary[dominantX ? 0 : 1] = dominantX ? Math.sign(forceX) || 1 : Math.sign(forceY) || 1;
+
+  const sideA = dominantX ? [0, 1] : [1, 0];
+  const sideB = [-sideA[0], -sideA[1]];
+  return { primary, sideA, sideB };
+}
+
+function flowWithPressure(x, y, reverse = false, pressure = 6) {
+  const { primary, sideA, sideB } = gravityBasis(reverse);
+  const sides = Math.random() < 0.5 ? [sideA, sideB] : [sideB, sideA];
+
+  if (tryMove(x, y, x + primary[0], y + primary[1])) return true;
+  for (const side of sides) {
+    if (tryMove(x, y, x + primary[0] + side[0], y + primary[1] + side[1])) return true;
+  }
+
+  for (const side of sides) {
+    for (let distance = 1; distance <= pressure; distance += 1) {
+      const sx = x + side[0] * distance;
+      const sy = y + side[1] * distance;
+      if (!inBounds(sx, sy) || !canMoveInto(get(sx, sy))) break;
+
+      const dropX = sx + primary[0];
+      const dropY = sy + primary[1];
+      if (canMoveInto(get(dropX, dropY))) {
+        return tryMove(x, y, x + side[0], y + side[1]);
+      }
+    }
+  }
+
+  for (const side of sides) {
+    if (tryMove(x, y, x + side[0], y + side[1])) return true;
+  }
+
+  return false;
+}
+
 function touching(x, y, material) {
   for (let dy = -1; dy <= 1; dy += 1) {
     for (let dx = -1; dx <= 1; dx += 1) {
@@ -388,6 +426,21 @@ function touching(x, y, material) {
   return false;
 }
 
+function extinguishNearbyFire(x, y) {
+  let extinguished = false;
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = x + dx;
+      const ny = y + dy;
+      if (get(nx, ny) !== FIRE) continue;
+      setCell(nx, ny, Math.random() < 0.72 ? SMOKE : EMPTY);
+      extinguished = true;
+    }
+  }
+  return extinguished;
+}
+
 function igniteNeighbors(x, y) {
   for (let dy = -1; dy <= 1; dy += 1) {
     for (let dx = -1; dx <= 1; dx += 1) {
@@ -395,7 +448,7 @@ function igniteNeighbors(x, y) {
       const ny = y + dy;
       const material = get(nx, ny);
       if (material === POWDER && Math.random() < 0.28) explode(nx, ny, 4);
-      if (material === WATER && Math.random() < 0.42) setCell(nx, ny, STEAM);
+      if (material === WATER && Math.random() < 0.42) setCell(nx, ny, SMOKE);
     }
   }
 }
