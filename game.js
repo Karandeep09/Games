@@ -533,7 +533,7 @@ function updateMotionSteering(event) {
   if (rotated.length() < 0.08) return;
 
   lastMotionAt = performance.now();
-  sensorInput.lerp(rotated, 0.28);
+  sensorInput.lerp(rotated.multiplyScalar(-1), 0.28);
 }
 
 function updateOrientationSteering(event) {
@@ -545,7 +545,7 @@ function updateOrientationSteering(event) {
     THREE.MathUtils.clamp(event.beta / 34, -1, 1),
   );
   if (rotated.length() < 0.08) return;
-  sensorInput.lerp(rotated, 0.22);
+  sensorInput.lerp(rotated.multiplyScalar(-1), 0.22);
 }
 
 function rotateForScreen(x, y) {
