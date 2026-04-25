@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Starbreaker Run</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Starbreaker Run">
+      <canvas id="game"></canvas>
+
+      <section class="hud hud-top" aria-label="Status">
+        <div>
+          <span class="hud-label">Score</span>
+          <strong id="score">0</strong>
+        </div>
+        <div>
+          <span class="hud-label">Shield</span>
+          <strong id="shield">100</strong>
+        </div>
+        <div>
+          <span class="hud-label">Wave</span>
+          <strong id="wave">1</strong>
+        </div>
+      </section>
+
+      <section class="hud hud-bottom" aria-label="Controls">
+        <button id="start-button" type="button">Launch</button>
+        <p id="message">Pilot through the asteroid field. Collect blue cores, dodge red rocks.</p>
+      </section>
+    </main>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="game.js"></script>
+  </body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sandbox</title>
+    <link rel="stylesheet" href="sandbox.css" />
+  </head>
+  <body>
+    <main class="sandbox-shell">
+      <header class="topbar">
+        <a class="icon-button" href="index.html" aria-label="Back to arcade">‹</a>
+        <div>
+          <p class="kicker">Pocket Powder Lab</p>
+          <h1>Sandbox</h1>
+        </div>
+        <button id="clear-button" class="icon-button clear-button" type="button" aria-label="Clear world">Clear</button>
+      </header>
+
+      <section class="stage-card">
+        <div class="stage-header">
+          <div>
+            <span class="status-dot"></span>
+            <span id="gravity-readout">Gravity: Down</span>
+          </div>
+          <span id="material-readout">Sand</span>
+        </div>
+
+        <div class="canvas-wrap" aria-label="Falling powder sandbox">
+          <canvas id="sandbox" width="220" height="140"></canvas>
+        </div>
+      </section>
+
+      <section class="control-panel" aria-label="Sandbox controls">
+        <div class="tool-row" aria-label="Materials">
+          <button class="tool sand active" type="button" data-material="sand">
+            <span class="swatch"></span>
+            <span>Sand</span>
+          </button>
+          <button class="tool water" type="button" data-material="water">
+            <span class="swatch"></span>
+            <span>Water</span>
+          </button>
+          <button class="tool powder" type="button" data-material="powder">
+            <span class="swatch"></span>
+            <span>Powder</span>
+          </button>
+          <button class="tool fire" type="button" data-material="fire">
+            <span class="swatch"></span>
+            <span>Fire</span>
+          </button>
+          <button class="tool stone" type="button" data-material="stone">
+            <span class="swatch"></span>
+            <span>Stone</span>
+          </button>
+          <button class="tool erase" type="button" data-material="erase">
+            <span class="swatch"></span>
+            <span>Erase</span>
+          </button>
+        </div>
+
+        <div class="settings" aria-label="Brush settings">
+          <label for="brush-size">Brush</label>
+          <input id="brush-size" type="range" min="1" max="12" value="5" />
+          <span id="brush-readout">5</span>
+        </div>
+
+        <button id="tilt-button" class="tilt-button" type="button">Mobile Sensor Gravity</button>
+      </section>
+    </main>
+
+    <script src="sandbox.js"></script>
+  </body>
+</html>
