@@ -121,7 +121,8 @@ body {
   gap: 14px;
 }
 
-#start-button {
+#start-button,
+#sensor-button {
   min-width: 104px;
   min-height: 44px;
   border: 0;
@@ -144,8 +145,22 @@ body {
     box-shadow 160ms ease;
 }
 
+#sensor-button {
+  min-width: 78px;
+  background: linear-gradient(180deg, #b4ff8e, #61dc54 58%, #2eaa39);
+}
+
+#sensor-button.active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 30px rgba(102, 255, 110, 0.48),
+    0 10px 28px rgba(0, 0, 0, 0.32);
+}
+
 #start-button:hover,
-#start-button:focus-visible {
+#start-button:focus-visible,
+#sensor-button:hover,
+#sensor-button:focus-visible {
   background: linear-gradient(180deg, #c5fbff, #55e0ff 58%, #18a9d7);
   box-shadow: 0 0 30px rgba(39, 215, 255, 0.42);
   outline: none;

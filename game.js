@@ -9,6 +9,7 @@ const shieldEl = document.querySelector("#shield");
 const waveEl = document.querySelector("#wave");
 const messageEl = document.querySelector("#message");
 const startButton = document.querySelector("#start-button");
+const sensorButton = document.querySelector("#sensor-button");
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x03050d);
@@ -41,8 +42,11 @@ composer.addPass(bloomPass);
 
 const clock = new THREE.Clock();
 const pointer = new THREE.Vector2();
+const sensorInput = new THREE.Vector2();
 const shipTarget = new THREE.Vector3();
 const keyboard = new Set();
+let sensorEnabled = false;
+let lastMotionAt = 0;
 
 const game = {
   active: false,
@@ -179,8 +183,10 @@ startButton.addEventListener("click", () => {
   if (game.active) game.boost = 0.7;
   game.active = true;
   startButton.textContent = "Boost";
-  messageEl.textContent = "Arrow keys or WASD to steer. Space, click, or tap to fire.";
+  messageEl.textContent = sensorEnabled ? "Tilt to steer. Tap to fire." : "Arrow keys or WASD to steer. Space, click, or tap to fire.";
 });
+
+sensorButton.addEventListener("click", enableSensors);
 
 window.addEventListener("keydown", (event) => {
   keyboard.add(event.key.toLowerCase());
@@ -195,10 +201,49 @@ window.addEventListener("keyup", (event) => keyboard.delete(event.key.toLowerCas
 window.addEventListener("pointermove", updatePointer);
 window.addEventListener("pointerdown", (event) => {
   updatePointer(event);
-  if (event.target === startButton) return;
+  if (event.target === startButton || event.target === sensorButton) return;
   if (game.active) shoot();
 });
 window.addEventListener("resize", resize);
+window.addEventListener("devicemotion", updateMotionSteering);
+window.addEventListener("deviceorientation", updateOrientationSteering);
+
+async function enableSensors() {
+  const hasMotion = typeof DeviceMotionEvent !== "undefined";
+  const hasOrientation = typeof DeviceOrientationEvent !== "undefined";
+
+  if (!hasMotion && !hasOrientation) {
+    messageEl.textContent = "Motion sensors are unavailable. HTTPS may be required.";
+    return;
+  }
+
+  const permissions = [];
+  if (hasMotion && typeof DeviceMotionEvent.requestPermission === "function") {
+    permissions.push(DeviceMotionEvent.requestPermission());
+  }
+  if (hasOrientation && typeof DeviceOrientationEvent.requestPermission === "function") {
+    permissions.push(DeviceOrientationEvent.requestPermission());
+  }
+
+  let results = [];
+  try {
+    results = await Promise.all(permissions);
+  } catch {
+    messageEl.textContent = "Motion permission was blocked.";
+    return;
+  }
+
+  if (results.some((permission) => permission !== "granted")) {
+    messageEl.textContent = "Motion permission was blocked.";
+    return;
+  }
+
+  sensorEnabled = !sensorEnabled;
+  sensorButton.classList.toggle("active", sensorEnabled);
+  sensorButton.textContent = sensorEnabled ? "Tilt On" : "Tilt";
+  if (!sensorEnabled) sensorInput.set(0, 0);
+  messageEl.textContent = sensorEnabled ? "Tilt your phone to steer. Tap to fire." : "Tilt steering off.";
+}
 
 function buildLights() {
   scene.add(new THREE.HemisphereLight(0xaadfff, 0x170817, 1.35));
@@ -476,6 +521,41 @@ function updatePointer(event) {
   pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
 
+function updateMotionSteering(event) {
+  if (!sensorEnabled || !event.accelerationIncludingGravity) return;
+  const { x, y } = event.accelerationIncludingGravity;
+  if (x === null || y === null) return;
+
+  const rotated = rotateForScreen(
+    THREE.MathUtils.clamp(x / 7.5, -1, 1),
+    THREE.MathUtils.clamp(-y / 7.5, -1, 1),
+  );
+  if (rotated.length() < 0.08) return;
+
+  lastMotionAt = performance.now();
+  sensorInput.lerp(rotated, 0.28);
+}
+
+function updateOrientationSteering(event) {
+  if (!sensorEnabled || event.beta === null || event.gamma === null) return;
+  if (performance.now() - lastMotionAt < 350) return;
+
+  const rotated = rotateForScreen(
+    THREE.MathUtils.clamp(event.gamma / 24, -1, 1),
+    THREE.MathUtils.clamp(event.beta / 34, -1, 1),
+  );
+  if (rotated.length() < 0.08) return;
+  sensorInput.lerp(rotated, 0.22);
+}
+
+function rotateForScreen(x, y) {
+  const angle = screen.orientation?.angle ?? window.orientation ?? 0;
+  if (angle === 90) return new THREE.Vector2(-y, x);
+  if (angle === -90 || angle === 270) return new THREE.Vector2(y, -x);
+  if (angle === 180) return new THREE.Vector2(-x, -y);
+  return new THREE.Vector2(x, y);
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), 0.034);
@@ -531,8 +611,10 @@ function update(delta) {
 function updateShip(delta, elapsed) {
   const keyX = Number(keyboard.has("arrowright") || keyboard.has("d")) - Number(keyboard.has("arrowleft") || keyboard.has("a"));
   const keyY = Number(keyboard.has("arrowup") || keyboard.has("w")) - Number(keyboard.has("arrowdown") || keyboard.has("s"));
-  const inputX = THREE.MathUtils.clamp(pointer.x * world.halfWidth + keyX * 3.2, -world.halfWidth, world.halfWidth);
-  const inputY = THREE.MathUtils.clamp(pointer.y * 4 + keyY * 2.2, world.bottom, world.top);
+  const steerX = sensorEnabled ? sensorInput.x : pointer.x;
+  const steerY = sensorEnabled ? sensorInput.y : pointer.y;
+  const inputX = THREE.MathUtils.clamp(steerX * world.halfWidth + keyX * 3.2, -world.halfWidth, world.halfWidth);
+  const inputY = THREE.MathUtils.clamp(steerY * 4 + keyY * 2.2, world.bottom, world.top);
 
   shipTarget.set(inputX, inputY, 4.5);
   ship.position.lerp(shipTarget, game.active ? 7.5 * delta : 2.4 * delta);
