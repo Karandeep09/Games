@@ -198,7 +198,7 @@ function updateMotionGravity(event) {
 
   lastMotionAt = performance.now();
   sensorMode = "accelerometer";
-  setGravity(gravity.x, gravity.y, sensorLabel(gravity.x, gravity.y, "Accel"));
+  setGravity(-gravity.x, -gravity.y, sensorLabel(-gravity.x, -gravity.y, "Accel"));
 }
 
 function updateTiltGravity(event) {
@@ -210,7 +210,7 @@ function updateTiltGravity(event) {
   const gravity = rotateForScreen(x, y);
   if (Math.hypot(gravity.x, gravity.y) < 0.18) return;
   sensorMode = "gyroscope";
-  setGravity(gravity.x, gravity.y, sensorLabel(gravity.x, gravity.y, "Gyro"));
+  setGravity(-gravity.x, -gravity.y, sensorLabel(-gravity.x, -gravity.y, "Gyro"));
 }
 
 function sensorLabel(x, y, prefix) {
